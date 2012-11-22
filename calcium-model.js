@@ -339,14 +339,14 @@
     },
     
     /**
-     * Sync all changes (destroy, change, add) in persistence. 
+     * Commit all changes (destroy, change, add) in persistence. 
      * 
      * @param {Object} options Options
      */
-    sync : function() {
+    commit : function() {
       if (this.conduit) {
         // Emit "sync" event  
-        this.emit('sync', arguments);
+        this.emit('commit', arguments);
       } else {
         // Simple happy model.
         _.each(this.ghosts, function(ghost) {
