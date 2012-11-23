@@ -22,10 +22,12 @@ Calcium uses Backbone-like mechanizm for subclassing objects. For convenience
 ## `Ca.Events` Evented objects
 
 Events is a module that can be mixed in to any object, giving the object 
-ability to bind and trigger custom named events. 
+ability to bind and trigger custom named events.
+ 
+```javascript
+var myEvented = _.extend({}, Ca.Events)
 ```
-    var myEvented = _.extend({}, Ca.Events)
-```
+
 ### `on()` Bind
 
     on(events, callback, [context], [dispose])
