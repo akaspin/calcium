@@ -13,9 +13,11 @@ All Calcium located inside `Ca` namespace.
 Calcium uses Backbone-like mechanizm for subclassing objects. For convenience 
 `extend` available in `Ca` namespace.
 
-    var MyObj = {}
-    MyObj.extend = Ca.extend;
-    var MySubObj = MyObj.extend({ ... });
+```javascript
+var MyObj = {}
+MyObj.extend = Ca.extend;
+var MySubObj = MyObj.extend({ ... });
+```
 
 # Events
 
@@ -30,7 +32,9 @@ var myEvented = _.extend({}, Ca.Events)
 
 ### `on()` Bind
 
-    on(events, callback, [context], [dispose])
+```javascript
+on(events, callback, [context], [dispose])
+```
 
 Bind a callback function to an object. The callback will be invoked whenever 
 the event is fired. The `events` string may also be a space-delimited list of 
@@ -44,7 +48,9 @@ turn-off all `context` events for `this` then `context` emit "dispose" event.
 
 ### `off()` Unbind
 
-    off(events, [callback], [context])
+```javascript
+off(events, [callback], [context])
+```
     
 Remove a previously-bound `callback` function from an object. If no `context` 
 is specified, all of the versions of the `callback` with different contexts 
@@ -54,7 +60,9 @@ will be removed.
 
 ### `emit()` Trigger callbacks
 
-    emit(events, [args])
+```javascript
+emit(events, [args])
+```
     
 Trigger all callbacks for `events`. Callbacks will be triggered with sender as 
 first argument and `args`.
