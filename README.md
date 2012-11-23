@@ -125,131 +125,59 @@ events.
 
 # Model
 
-Calcium uses lightweight Model implementation. Model holds Records - small 
-evented objects that can not be created directly. To interact with persistence 
+Calcium uses lightweight Model implementation. To interact with persistence 
 Models uses Conduits (see Conduits for details).
 
-    // Model
-    var myModel = new Ca.Model();
-    
-    // simple listener
-    var mkReporter = function(ev) {
-      return function(model, data) {console.log(ev, data);};
-    };
-    
-    myModel.on('change', mkReporter('model:changed'))
-           .on('create', mkReporter('model:created'));
-    
-    // Put two records
-    myModel.set([{id: 1, field: "any"}, {id: 2, field: "another"}])
-    // > model:created [..., ...]
+```javascript
+// Model
+var myModel = new Ca.Model();
 
-    // Get one record, add callback
-    var record = myModel.get(1);
-    record.on('change', function(record, previous, dirty){
-      console.log('record:changed', record.id, previous, dirty)
-    });
-    
-    // Change directly
-    record.set({field: "Changed!"});
-    // > model:changed [{record: ..., previous: {field:"any"}, dirty: true}]
-    // > record:changed 1 {field:"any"} true
-    
-    // Set in mass manner
-    myModel.set([
-      {id:1, field:"And again"},
-      {id:3, fiald:"new"}
-    ]);
-    // > model:created [...]
-    // > model:changed [{record:..., previous:{field:"Changed!"}, dirty:true}]
-    // > record:changed 1 {field:"Changed!"} true
+// simple listener
+var mkReporter = function(ev) {
+  return function(model, data) {console.log(ev, data);};
+};
 
+myModel.on('change', mkReporter('model:changed'))
+       .on('create', mkReporter('model:created'))
+       .on('destroy', mkReporter('model:destroyed'));
 
+// Put two records
+myModel.set([{id: 1, field: "any"}, {id: 2, field: "another"}])
+// > model:created [..., ...]
+
+// Get one record, add callback
+var record = myModel.get(1);
+record.on('change', function(record, previous, dirty){
+  console.log('record:changed', record.id, previous, dirty)
+});
+record.on('destroy', function(record){
+  console.log('record:destroyed', record.id)
+});
+
+// Change directly
+record.set({field: "Changed!"});
+// > model:changed [{record: ..., previous: {field:"any"}, dirty: true}]
+// > record:changed 1 {field:"any"} true
+
+// Set in mass manner
+myModel.set([
+  {id:1, field:"And again"},
+  {id:3, fiald:"new"}
+]);
+// > model:created [...]
+// > model:changed [{record:..., previous:{field:"Changed!"}, dirty:true}]
+// > record:changed 1 {field:"Changed!"} true
+
+// And destroy
+myModel.destroy([1,2]);
+// > model:destroyed [...]
+// > record:destroyed 1
+```
+
+Model holds Records - small evented objects. Records can not be created 
+directly, only by `Model#set`. Every record has immutable `id` that unique 
+within model. And ofcourse records emits events.
+
+`"change"`  
 
 ## `Ca.Model`
-
-Model supports `extend` as usual. See `Ca.extend()`.
-
-### Events
-
-Model based on `Ca.Flow` and emit events in flow manner. Record based on 
-`Ca.Event` and can emit three events: "change:", "invalid" and "destroy". 
-
-
-
- 
-
-`create` event emitted if records are created.
-
-Model emits `change` event on attributes of records are changed or/and on 
-changed `dirty` flag.
-
-    myModel.on('change', function(model, data) {
-      console.log(data)
-    }, this);
-    ...
-    [{
-      record: ...,
-      previous: ...,
-      dirty: ...
-     }]
-
-
-
-`destroy`
-
-`invalid`
-
-`fetch`
-
-`commit`
-
-### `conduit`
-
-This property 
-
-### `id`
-
-### `ids` Id mapping
-
-`ids` is hash for fast access to records by ids. Simple and strayforward.
-
-### `records` Records
-
-`records` property is usual array that holds all records in Model. 
-
-### `ghosts` Destroyed records
-
-All destroyed records are here. Used by `commit()`.
-
-### `init()` Initializer
-
-
-
-### `validate()`
-
-### `get()` Access records
-
-### `set()` Create and change records
-
-### `destroy()` Destroy records
-
-### `fetch()` Request data
-
-### `commit()` Commit changes
-
-## Record
-
-### `id` Unique id
-
-### `model` Model reference
-
-### `dirty` Sync flag
-
-### `attributes` Record data
-
-### `get()` Get attributes
-
-### `set()` Set attributes
-
-### `destroy()` Destroy record
