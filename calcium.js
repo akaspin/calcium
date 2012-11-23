@@ -119,7 +119,7 @@
           added = true;
         } 
       }
-      if (dispose && added && context && context.dispose) 
+      if (dispose && added && context && context !== this && context.dispose) 
           context.on('dispose', _dispose, this);
       
       return this;

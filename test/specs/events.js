@@ -61,6 +61,16 @@
         master.emit('event');
         expect(_.pluck(this.actions, 'me')).toEqual([0,1,2,4]);
       });
+      it('should correctly unbind events with callback \
+          and context', function() {
+        var master = this.master;
+        _.each(this.actors, function(actor) {
+          master.on('event', actor.cb, actor);
+        }, this);
+        master.off(null, this.actors[3].cb, this.actors[3]);
+        master.emit('event');
+        expect(_.pluck(this.actions, 'me')).toEqual([0,1,2,4]);
+      });
     });
     
     describe('on evented callbacks', function() {
