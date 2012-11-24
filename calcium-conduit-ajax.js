@@ -13,4 +13,11 @@
     
   };
   
+  _.extend(Ajax.prototype, Ca.Events, {
+    
+    attach : function(model, options) {
+      
+    }
+  });
+  
 }).call(this);

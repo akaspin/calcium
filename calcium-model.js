@@ -139,57 +139,6 @@
    * - `ghosts`
    */
   
-  //Internal model methods. Event listeners.
-  var _RecordEvents = {
-    
-    /**
-     * Model action on successful Record change. Just forward event.
-     * 
-     * @param {Object} record Record
-     * @param {Object} previous Hash with previous values of changed
-     *                 attributes
-     * @param {Boolean} dirty Dirty flag
-     */
-    change : function(record, previous, dirty) {
-      this.emit('change', {
-        record: record,
-        previous: previous,
-        dirty: dirty
-      });
-    },
-    
-    /**
-     * Model action on successful Record `destroy`.
-     * @param {Object} record Record
-     * @param options Options
-     */
-    destroy : function(record, options) {
-      var index = this.records.indexOf(record);
-      if (index != -1) {
-        this.ghosts || (this.ghosts = []);
-        if (options.clean) this.ghosts.push(record);
-        delete this.ids[record.id];
-        this.records.splice(index, 1);
-        this.emit('destroy', record);
-      }
-    },
-    
-    /**
-     * Model action on invalidate new attributes. Just forward event.
-     * @param record Record or `undefined` on record creation 
-     * @param {Object} attributes Invalid attributes 
-     * @param reason Reason
-     * @param options Options
-     */
-    invalid : function(record, attributes, reason) {
-      this.emit('invalid', {
-        record: record,
-        attributes: attributes,
-        reason: reason
-      });
-    }
-  };
-  
   /**
    * Model.
    * @param {Object} options Options
@@ -298,9 +247,9 @@
           this.ids[record.id] = record;
           
           // Bind events
-          record.on('destroy', _RecordEvents.destroy, this, true);
-          record.on('change', _RecordEvents.change, this, true);
-          record.on('invalid', _RecordEvents.invalid, this, true);
+          record.on('destroy', _onRecordDestroy, this, true);
+          record.on('change', _onRecordChange, this, true);
+          record.on('invalid', _onRecordInvalid, this, true);
           
           this.emit('create', record);
         } catch (e) {
@@ -361,6 +310,55 @@
           return res;
         }, this), {clean:true});
       }
+    },
+    
+    // Record event handlers
+    
+    /**
+     * Model action on successful Record change. Just forward event.
+     * 
+     * @param {Object} record Record
+     * @param {Object} previous Hash with previous values of changed
+     *                 attributes
+     * @param {Boolean} dirty Dirty flag
+     */
+    _onRecordChange : function(record, previous, dirty) {
+      this.emit('change', {
+        record: record,
+        previous: previous,
+        dirty: dirty
+      });
+    },
+    
+    /**
+     * Model action on successful Record `destroy`.
+     * @param {Object} record Record
+     * @param options Options
+     */
+    _onRecordDestroy : function(record, options) {
+      var index = this.records.indexOf(record);
+      if (index != -1) {
+        this.ghosts || (this.ghosts = []);
+        if (options.clean) this.ghosts.push(record);
+        delete this.ids[record.id];
+        this.records.splice(index, 1);
+        this.emit('destroy', record);
+      }
+    },
+    
+    /**
+     * Model action on invalidate new attributes. Just forward event.
+     * @param record Record or `undefined` on record creation 
+     * @param {Object} attributes Invalid attributes 
+     * @param reason Reason
+     * @param options Options
+     */
+    _onRecordInvalid : function(record, attributes, reason) {
+      this.emit('invalid', {
+        record: record,
+        attributes: attributes,
+        reason: reason
+      });
     }
   });
   

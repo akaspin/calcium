@@ -311,6 +311,8 @@ myModel.set([{id: 1, field: "any"}, {field: "another"}])
 If record with ID not exists in model, it will be created. Otherwise, it will 
 be updated. If hash does not contain ID, it will be created automatically.
 
+Model that holds record can be acessed my `model` property of record.
+
 By default, on creation model looking for `id` attribute in hash. But if 
 you're directly communicating with a backend (CouchDB, MongoDB) that uses a 
 different unique key, you may set a Model's `id` to transparently map from 
