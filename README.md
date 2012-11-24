@@ -126,7 +126,7 @@ Instead emit events immediatelly, Flow holds all its events and emit them at
 once.
 
 ```javascript
-var flow = .extend({}, Ca.Flow);
+var flow = _.extend({}, Ca.Flow);
 flow.on('ev', function(sender, data){
   console.log(data);
 });
@@ -231,7 +231,7 @@ changed and out of sync with persistence.
 
 *change* event emmited then any of attributes or `dirty` flag of record is 
 changed. Callback will be fired with three arguments: record (`Ca.Events` 
-convencion), hash of previous attributes and `dirty` flag.
+convention), hash of previous attributes and `dirty` flag.
 
 On destroy record will emit *destroy* event with only one argument - record.
 
@@ -267,6 +267,123 @@ Also, models emits two events for interacting with conduits: *fetch* and
 Model supports `extend()` as usual, see above for details. Records can't be 
 extended. They just holds data.
 
-## Creating records
+## Creating and changing records
+
+```javascript
+Model#set(incoming, [options])
+record#set(attributes, [options])
+```
+
+Records can be created by only one way - `model#set()` with array of hashes as 
+`incoming`. 
+
+```javascript
+myModel.set([{id: 1, field: "any"}, {field: "another"}])
+```
+
+If record with ID not exists in model, it will be created. Otherwise, it will 
+be updated. If hash does not contain ID, it will be created automatically.
+
+By default, on creation model looking for `id` attribute in hash. But if 
+you're directly communicating with a backend (CouchDB, MongoDB) that uses a 
+different unique key, you may set a Model's `id` to transparently map from 
+that key to id.
+
+```javascript
+var myModel = new (Ca.Model.extend({
+  id: '_id'
+}))();
+myModel.set([{_id: 1, field: "any"}])
+console.log(model.get(1).id)
+
+// > 1
+```
+
+To change record use record's `set()` with hash of changed attributes or 
+`Model#set()` with array of hashes. If record with ID in hash exists, it will 
+be updated.
+
+When record created or changed, Calcium sets `dirty` flag of record to true. 
+To unset `dirty` (or set attributes with unsetting `dirty`), use 
+`{clean:true}` in `options`. This works in both `set()` methods of model and 
+record.
+
+```javascript
+record.set({}, {clean:true});
+// or
+model.set([{id:1}, {id:2}], {clean:true});
+```
+
+Another way is use `Model#commit()` see below for details.
+
+## Accessing records
+
+```javascript
+Model#get(id)
+```
+
+You can access records by three ways. Simplest is `Model#get()` with ID. This 
+has already been used above. This method returns record or `undefined` if 
+it not exists in model.
+
+Another ways is usage of `records` and `ids` Model properties.
+
+```javascript
+console.log(_.pluck(model.records, 'id'));
+console.log(model.ids);
+
+// [1, 2, 3]
+// {1: ..., 2: ...}
+```
+
+`records` is regular array, `ids` is regular hash where record's ids are 
+mapped to records. To avoid problems don't modify them directly. but no one 
+stops you to use any tools such *underscore*, *lodash* or anything for 
+searhing.
+
+## Accessing record data
+
+```javascript
+record#get(attribute)
+```
+
+`record#get()` returns attribute value or `undefined` for non-existent 
+attributes.
+
+Another way is direct access to record's `attributes` property. It's regular 
+hash where attributes mapped to values. But don't change them directly. Use 
+`set()` methods of model or record. Same notes for record's `dirty` property.
+
+## Art of destruction
+
+```javascript
+Model#destroy(ids, [options])
+record#destroy([options])
+```
+
+Let's play with hummer. Use `destroy()` of model or record for fun and 
+pleasure.
+
+```javascript
+model.destroy([1,3,'or string id']);
+// or
+record.destroy();
+```
+
+Destroyed records are not destroyed completely. Instead, they are moved to 
+`ghosts` property of model. `ghosts` is regular array. To avoid necromancy, 
+use `{clean:true}` in `options` of both `destroy()`.
+
+```javascript
+model.destroy([1,3,'or string id'], {clean:true});
+// or
+record.destroy({clean:true});
+```
+
+Another way to do exorcism is `Model#commit()`. See below.
+
+## Validating
+
+
 
 
