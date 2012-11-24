@@ -168,7 +168,7 @@ flow.flow();
 // > second
 ```
 
-In addition to `Events#dispose`, Flow's `dispose` firstly emit all holded 
+In addition to `Events.dispose`, Flow's `dispose` firstly emit all holded 
 events.
 
 # Model
@@ -223,7 +223,7 @@ myModel.destroy([1,2]);
 ```
 
 Model holds Records - small evented objects. Records can not be created 
-directly, only by `Model#set`. Every record has immutable `id` that unique 
+directly, only by `Model.set`. Every record has immutable `id` that unique 
 within model. Also, record can have `dirty` flag which denotes that record is 
 changed and out of sync with persistence.
 
@@ -236,7 +236,7 @@ convention), hash of previous attributes and `dirty` flag.
 On destroy record will emit *destroy* event with only one argument - record.
 
 *invalid* event can be emmited in two cases. If new attributes failed (see 
-below) or `record#set` tries to change record ID.
+below) or `record.set` tries to change record ID.
 
 ```javascript
 // set handlers
@@ -270,11 +270,11 @@ extended. They just holds data.
 ## Creating and changing records
 
 ```javascript
-Model#set(incoming, [options])
-record#set(attributes, [options])
+Model.set(incoming, [options])
+record.set(attributes, [options])
 ```
 
-Records can be created by only one way - `model#set()` with array of hashes as 
+Records can be created by only one way - `model.set()` with array of hashes as 
 `incoming`. 
 
 ```javascript
@@ -300,7 +300,7 @@ console.log(model.get(1).id)
 ```
 
 To change record use record's `set()` with hash of changed attributes or 
-`Model#set()` with array of hashes. If record with ID in hash exists, it will 
+`Model.set()` with array of hashes. If record with ID in hash exists, it will 
 be updated.
 
 When record created or changed, Calcium sets `dirty` flag of record to true. 
@@ -314,15 +314,15 @@ record.set({}, {clean:true});
 model.set([{id:1}, {id:2}], {clean:true});
 ```
 
-Another way is use `Model#commit()` see below for details.
+Another way is use `Model.commit()` see below for details.
 
 ## Accessing records
 
 ```javascript
-Model#get(id)
+Model.get(id)
 ```
 
-You can access records by three ways. Simplest is `Model#get()` with ID. This 
+You can access records by three ways. Simplest is `Model.get()` with ID. This 
 has already been used above. This method returns record or `undefined` if 
 it not exists in model.
 
@@ -344,10 +344,10 @@ searhing.
 ## Accessing record data
 
 ```javascript
-record#get(attribute)
+record.get(attribute)
 ```
 
-`record#get()` returns attribute value or `undefined` for non-existent 
+`record.get()` returns attribute value or `undefined` for non-existent 
 attributes.
 
 Another way is direct access to record's `attributes` property. It's regular 
@@ -357,8 +357,8 @@ hash where attributes mapped to values. But don't change them directly. Use
 ## Art of destruction
 
 ```javascript
-Model#destroy(ids, [options])
-record#destroy([options])
+Model.destroy(ids, [options])
+record.destroy([options])
 ```
 
 Let's play with hummer. Use `destroy()` of model or record for fun and 
@@ -380,7 +380,7 @@ model.destroy([1,3,'or string id'], {clean:true});
 record.destroy({clean:true});
 ```
 
-Another way to do exorcism is `Model#commit()`. See below.
+Another way to do exorcism is `Model.commit()`. See below.
 
 ## Validating
 
