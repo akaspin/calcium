@@ -262,10 +262,37 @@ fails (new attributes fails validation), model will emit *invalid* event.
 Also, models emits two events for interacting with conduits: *fetch* and 
 *commit*.
 
-## Subclassing
+## Subclassing and initialization
 
 Model supports `extend()` as usual, see above for details. Records can't be 
 extended. They just holds data.
+
+```javascript
+var MyModel = Ca.Model.extend({
+  ...
+});
+```
+
+Also, model options can be provided on instantiation.
+
+```javascript
+var myModel = new Ca.Model({
+  ...
+});
+```
+
+To execute any operations on model creation define `init()` method.
+
+```javascript
+var MyModel = Ca.Model.extend({
+  init: function(options) {
+    console.log("I'm alive");
+  }
+});
+var myModel = new MyModel();
+
+// > I'm alive
+```
 
 ## Creating and changing records
 
@@ -382,7 +409,102 @@ record.destroy({clean:true});
 
 Another way to do exorcism is `Model.commit()`. See below.
 
-## Validating
+## Validation
+
+To validate attributes on record changing or creation define `validate()` for 
+model.
+
+```javascript
+var MyModel = Ca.Model.extend({
+  validate: function(attributes) {
+    if ( !attributes.firstName )
+      return "First name is required";
+  }
+});
+```
+
+If `validate()` returns anything, the validation will fail and an `invalid`
+event will be fired on the record (on change) and model. `validate()` always 
+executed in model's context. Then record changing, `validate()` always 
+receives clone of full model attributes with overrided changed properties.
+
+## Persistence
+
+To interact with persistence models uses Conduits. Conduit attached to model 
+at the time of its creation.
+
+```javascript
+var MyModel = Ca.Model.extend({
+  conduit: myCoolConduit
+});
+```
+
+By default, `conduit` is not setted. In this case model acts as independent 
+in-memory no-brain happy beast.
+
+## Commiting and fetching
+
+```javascript
+Model.commit([options])
+Model.fetch([options])
+```
+
+Without `{clean:true}`, `set()` and `destroy()` are "leaving trails" in model 
+and records (`dirty` and `ghosts`). It's not part of evil plan. "Trails" used 
+for `commit()` method.
+
+Use `commit()` to consolidate changes (create, change or destroy records) in 
+persistence. After `commit()` all `dirty` will be unsetted, `ghosts` will be 
+cleared. `commit()` also takes `{clean:true}` in options. Use it to leverage 
+`commit()` to not interact with persistence and just clean model.
+
+`fetch()` fetches data from persistence. It takes only one argument `options`.
+
+Both `commit()` and `fetch()` `options` and behaviour are depends on model's 
+`conduit`. It can be Conduit instance or function that returns conduit. By 
+default it `undefined`. 
+
+If model has no conduit `commit()` always just clean model, and `fetch()` is 
+noop. When model attached to conduit, it just emits *fetch* and *commit* 
+events on corresponding method.
+
+## Input and output
+
+```javascript
+Model.income(attributes)
+Model.outcome()
+```
+
+For transform data fetched or sended to conduits use `income()` and 
+`outcome()`.
+
+```javascript
+var MyScrevedModel = Ca.Model.extend(
+  income : function(attributes) {
+    return _.extend({mayBeMissing: "I'm here"}, attributes);
+  },
+  outcome : function(){
+    return this.attributes;
+  }
+);
+```
+
+`income()` executed in models'context. It takes `attributes` hash for one 
+record and another. `outcome()` executed in *record's* context. It just 
+returns hash of attributes. Calcium always clone attributes before `income()` 
+and results of `outcome()`.
+
+There is no need to invoke both methods directly. This burden falls on the 
+shoulders of Conduit.
+
+Conduit... conduit... What is this thing? A little patience.
+
+# Conduits
+
+Conduits is way for models to interact with persistence.
+
+
+
 
 
 

@@ -334,7 +334,7 @@
      * with self and `arguments`. Conduit must to bind on "fetch" on `attach`.
      */
     fetch : function(options) {
-      this.emit('fetch', arguments);
+      if (this.conduit) this.emit('fetch', arguments);
       return this;
     },
     
@@ -344,11 +344,12 @@
      * @param {Object} options Options
      */
     commit : function() {
-      if (this.conduit) {
+      options || (options = {});
+      if (!options.clean || this.conduit) {
         // Emit "sync" event  
         this.emit('commit', arguments);
       } else {
-        // Simple happy model.
+        // Simple happy model or clean.
         _.each(this.ghosts, function(ghost) {
           ghost.dispose();
         }, this);
