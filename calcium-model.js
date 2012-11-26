@@ -25,6 +25,11 @@
    * - `dirty` Flag that record isn't synchronized with persistence.
    */
   
+  function generateQuickGuid() {
+    return _.uniqueId(Math.random().toString(36).substring(2, 15) +
+        Math.random().toString(36).substring(2, 15));
+  }
+  
   /**
    * Internal record constructor.
    * @param {Object} model Model
@@ -35,12 +40,16 @@
    */
   var Record = function(model, attributes, clean) {
     this.model = model;
-    var invalid;
+    var invalid, id = model.id;
     if (model.validate && (invalid = model.validate.call(model, attributes))) 
       throw new Error(invalid);
     this.attributes = attributes;
     if (!clean) this.dirty = true;
-    this.id = attributes[idAttr] || _.uniqueId();
+    this.id = _.has(attributes, id) ? attributes[id] : generateQuickGuid();
+    this.dispose(function() {
+      delete this.model;
+      delete this.attributes;
+    });
   };
   
   // Record methods
@@ -78,11 +87,10 @@
       var newId = attributes[model.id];
       if (newId !== this.id) invalid = "Can't change record id";
       // Validate record
-      if (!invalid) invalid = _Record.validate.call(this, 
-          _.extend({}, this.attributes, attributes));
+      if (!invalid && model.validate) invalid = model.validate.call(model, 
+                _.extend({}, this.attributes, attributes));
       // If any invalid results emit "invalid event"
-      if (invalid || (model.validate && 
-          (invalid = model.validate.call(model, attributes)))) {
+      if (invalid) {
         this.emit('invalid', attributes, invalid);
         return this;
       }
@@ -90,7 +98,8 @@
       // All ok - set new
       var previous = {}, now = _.clone(this.attributes),
       oldDirty = this.dirty;
-      _.forOwn(_.clone(attributes), function(key, value) {
+      
+      _.forOwn(attributes, function(value, key) {
         if (!_.has(now, key) || !_.isEqual(now[key], value)) {
           previous[key] = now[key];
           this.attributes[key] = value;
@@ -103,7 +112,7 @@
       
       // If any changes - set dirty flag and emit event
       if (!_.isEmpty(previous) || oldDirty != this.dirty) {
-        this.emit('change', previous, this.dirty);
+        this.emit('change', previous);
       }
       
       return this;
@@ -122,6 +131,7 @@
      * @returns Record
      */
     destroy : function(options) {
+      options || (options = {});
       this.emit('destroy', options);
       if (options.clean) this.dispose();
       return this;
@@ -146,17 +156,27 @@
    */
   var Model = Ca.Model = function(options) {
     // set props
-    this.flowBy = ['destroy', 'change', 'create', 'invalid'];
+    //this.flowBy = ['destroy', 'change', 'create', 'invalid'];
     this.ids = {};
     this.records = [];
+    this.ghosts = {};
     options && _.extend(this, options);
     
-    // fix conduit and attach if needed
-    this.conduit = _.result(this, 'conduit');
-    this.conduit && this.conduit.attach(this);
+    // Attach to conduit
+    var conduit = _.result(this, 'conduit');
+    if (conduit && conduit.attach) conduit.attach(this);
     
     // set dispose action
     this.dispose(function() {
+      // Clean destroy all records
+      this.destroy(_.keys(this.ids), {clean:true});
+      
+      // kill ghosts
+      _.each(_.values(this.ghosts), function(ghost) {
+        ghost.dispose();
+      });
+      
+      // final cleanup
       delete this.ghosts;
       delete this.ids;
       delete this.records;
@@ -213,7 +233,7 @@
       options || (options = {});
       incoming = incoming.slice();
       
-      var i, length, attrs, id, record, ingest = []; 
+      var i, length, attrs, record, ingest = [], existing; 
 
       if (options.reset) {
         // Then reset - remove orphans with `clean:true`.
@@ -226,10 +246,10 @@
       
       // Change phase
       this.flow();
-      for (i=0, length = incoming.length; i < length; i++) {
+      for (i= incoming.length-1; i >= 0; i--) {
         attrs = incoming[i];
         // Change record if it exists 
-        if ((id = attrs.id) && (record = this.get(id))) {
+        if (_.has(attrs, this.id) && (record = this.get(attrs[this.id]))) {
           record.set(attrs, options);
           incoming.splice(i, 1);
         }
@@ -243,13 +263,18 @@
         // Create new record or report error.
         try {
           record = new Record(this, attrs, options.clean);
+          
+          // if record with id present in ghosts. dispose it
+          if (existing = this.ghosts[record.id]) existing.dispose();
+          
           ingest.push(record);
           this.ids[record.id] = record;
           
           // Bind events
-          record.on('destroy', _onRecordDestroy, this, true);
-          record.on('change', _onRecordChange, this, true);
-          record.on('invalid', _onRecordInvalid, this, true);
+          record.on('destroy', this._onRecordDestroy, this)
+                .on('change', this._onRecordChange, this)
+                .on('invalid', this._onRecordInvalid, this)
+                .on('dispose', this._onRecordDispose, this);
           
           this.emit('create', record);
         } catch (e) {
@@ -259,8 +284,14 @@
           }, options);
         };
       }
-      this.records.concat(ingest);
+      // splice
+      if (ingest.length) {
+        ingest.unshift(0);
+        ingest.unshift(this.records.length);
+      }
+      Array.prototype.splice.apply(this.records, ingest);
       this.flow(true);
+      return this;
     },
     
     /**
@@ -270,12 +301,13 @@
      * @returns {Object} Model
      */
     destroy : function(ids, options) {
+      options || (options = {});
       this.flow();
-      var record;
-      _.each(ids, function(id) {
-        if (record = this.get(id)) record.destroy(options);
+      _.each(_.pick(this.ids, ids), function(record) {
+        record.destroy(options);
       }, this);
       this.flow(true);
+      return this;
     },
     
     /**
@@ -283,7 +315,7 @@
      * with self and `arguments`. Conduit must to bind on "fetch" on `attach`.
      */
     fetch : function(options) {
-      if (this.conduit) this.emit('fetch', arguments);
+      if (this._conduit) this.emit('fetch', options);
       return this;
     },
     
@@ -292,27 +324,21 @@
      * 
      * @param {Object} options Options
      */
-    commit : function() {
+    commit : function(options) {
       options || (options = {});
-      if (!options.clean || this.conduit) {
+      if (!options.clean || this._conduit) {
         // Emit "sync" event  
-        this.emit('commit', arguments);
+        this.emit('commit', options);
       } else {
-        // Simple happy model or clean.
-        _.each(this.ghosts, function(ghost) {
-          ghost.dispose();
-        }, this);
-        delete this.ghosts;
-        var res;
-        this.set(_.map(_.filter(this.records, 'dirty'), function(record) {
-          res = {};
-          res[this.id] = record.id;
-          return res;
-        }, this), {clean:true});
+        this._onConduitDestroy(null, this, _.keys(this.ghosts));
+        this._onConduitStore(null, this, 
+            _.pluck(_.filter(this.records, 'dirty'), 'id'));
       }
     },
     
+    //
     // Record event handlers
+    //
     
     /**
      * Model action on successful Record change. Just forward event.
@@ -320,13 +346,11 @@
      * @param {Object} record Record
      * @param {Object} previous Hash with previous values of changed
      *                 attributes
-     * @param {Boolean} dirty Dirty flag
      */
-    _onRecordChange : function(record, previous, dirty) {
+    _onRecordChange : function(record, previous) {
       this.emit('change', {
         record: record,
-        previous: previous,
-        dirty: dirty
+        previous: previous
       });
     },
     
@@ -338,8 +362,9 @@
     _onRecordDestroy : function(record, options) {
       var index = this.records.indexOf(record);
       if (index != -1) {
-        this.ghosts || (this.ghosts = []);
-        if (options.clean) this.ghosts.push(record);
+        if (!options.clean) this.ghosts[record.id] = record;
+        // off events except dispose
+        this.off('destroy change invalid', null, record);
         delete this.ids[record.id];
         this.records.splice(index, 1);
         this.emit('destroy', record);
@@ -359,7 +384,68 @@
         attributes: attributes,
         reason: reason
       });
+    },
+    
+    /**
+     * Model action on record dispose.
+     * @param {Object} record Record
+     */
+    _onRecordDispose : function(record) {
+      // If record exists - destroy it
+      if (this.get(record.id)) record.destroy({clean:true});
+      // do cleanup
+      this.off(null, null, record);
+      delete this.ghosts[record.id];
+    },
+    
+    //
+    // Conduit event handlers
+    //
+    
+    /**
+     * Model action on conduit fetch.
+     * @param conduit Conduit
+     * @param model Model that initiated fetch
+     * @param {Array} data Fetched data
+     */
+    _onConduitFetch : function(conduit, model, data) {
+      if (model !== this) return;
+      this.set(this.income ? 
+          _.map(data, function(attributes) {
+            return this.income(_.clone(attributes));
+          }, this) : data
+          , {clean:true}); 
+    },
+    
+    /**
+     * Model action on conduit destroy. Default behaviour is just dispose 
+     * ids from `ghosts`
+     */
+    _onConduitDestroy : function(conduit, model, ids) {
+      if (model !== this) return;
+      _.each(_.pick(this.ghosts, ids), function(ghost) {
+        ghost.dispose();
+      });
+    },
+    
+    /**
+     * Model action on conduit store. Default behaviour is just clean
+     * `dirty` for records with given ids. 
+     * @param {Object} conduit Conduit
+     * @param {Object} model Model
+     * @param {Array} ids Ids of stored records
+     */
+    _onConduitStore : function(conduit, model, ids) {
+      if (model !== this) return;
+      var res, records = _.map(_.pick(this.ids, ids), function(record){
+        if (record.dirty) {
+          res = {}; res[this.id] = id;
+          return res;
+        }
+      }, this);
+      this.set(records, {clean:true});
     }
+    
   });
   
   Model.extend = Ca.extend;

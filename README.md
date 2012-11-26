@@ -6,6 +6,11 @@ Backbone.js but, in contrast, has the following objectives:
 * Completely predictable behavior.
 * Browser-first. Support for node.js only if it does not interfere.
 
+# Depenndencies
+
+Calcium depends to *underscore.js* (or *lodash.js*). Also, for ajax and DOM 
+manipulations, some Calcium components uses jQuery (or Zepto).
+
 # Namespace and subclassing
 
 All Calcium located inside `Ca` namespace.
@@ -195,8 +200,8 @@ myModel.set([{id: 1, field: "any"}, {id: 2, field: "another"}])
 
 // Get one record, add callback
 var record = myModel.get(1);
-record.on('change', function(record, previous, dirty){
-  console.log('record:changed', record.id, previous, dirty)
+record.on('change', function(record, previous){
+  console.log('record:changed', record.id, previous)
 });
 record.on('destroy', function(record){
   console.log('record:destroyed', record.id)
@@ -204,8 +209,8 @@ record.on('destroy', function(record){
 
 // Change directly
 record.set({field: "Changed!"});
-// > model:changed [{record: ..., previous: {field:"any"}, dirty: true}]
-// > record:changed 1 {field:"any"} true
+// > model:changed [{record: ..., previous: {field:"any"}}]
+// > record:changed 1 {field:"any"}
 
 // Set in mass manner
 myModel.set([
@@ -213,8 +218,8 @@ myModel.set([
   {id:3, fiald:"new"}
 ]);
 // > model:created [...]
-// > model:changed [{record:..., previous:{field:"Changed!"}, dirty:true}]
-// > record:changed 1 {field:"Changed!"} true
+// > model:changed [{record:..., previous:{field:"Changed!"}}]
+// > record:changed 1 {field:"Changed!"}
 
 // And destroy
 myModel.destroy([1,2]);
@@ -400,8 +405,9 @@ record.destroy();
 ```
 
 Destroyed records are not destroyed completely. Instead, they are moved to 
-`ghosts` property of model. `ghosts` is regular array. To avoid necromancy, 
-use `{clean:true}` in `options` of both `destroy()`.
+`ghosts` property of model. `ghosts` is hash where destroyed ids mapped to 
+destroyed records. To avoid necromancy, use `{clean:true}` in `options` of 
+both `destroy()`.
 
 ```javascript
 model.destroy([1,3,'or string id'], {clean:true});
@@ -429,20 +435,6 @@ If `validate()` returns anything, the validation will fail and an `invalid`
 event will be fired on the record (on change) and model. `validate()` always 
 executed in model's context. Then record changing, `validate()` always 
 receives clone of full model attributes with overrided changed properties.
-
-## Persistence
-
-To interact with persistence models uses Conduits. Conduit attached to model 
-at the time of its creation.
-
-```javascript
-var MyModel = Ca.Model.extend({
-  conduit: myCoolConduit
-});
-```
-
-By default, `conduit` is not setted. In this case model acts as independent 
-in-memory no-brain happy beast.
 
 ## Commiting and fetching
 
@@ -481,7 +473,7 @@ For transform data fetched or sended to conduits use `income()` and
 `outcome()`.
 
 ```javascript
-var MyScrevedModel = Ca.Model.extend(
+var MyModel = Ca.Model.extend(
   income : function(attributes) {
     return _.extend({mayBeMissing: "I'm here"}, attributes);
   },
@@ -491,8 +483,8 @@ var MyScrevedModel = Ca.Model.extend(
 );
 ```
 
-`income()` executed in models'context. It takes `attributes` hash for one 
-record and another. `outcome()` executed in *record's* context. It just 
+`income()` executed in *model's* context. It takes `attributes` hash for one 
+record. `outcome()` executed in *record's* context. It just 
 returns hash of attributes. Calcium always clone attributes before `income()` 
 and results of `outcome()`.
 
@@ -503,7 +495,34 @@ Conduit... conduit... What is this thing? A little patience.
 
 # Conduits
 
-Conduits is way for models to interact with persistence.
+Conduits is way for models to interact with persistence. Model can be attached 
+to only one conduit. But conduit can serve many models. Main advantage of 
+this approach is lightweight models.
+
+To attach model to conduit, define Model's `conduit` property by `extend` or 
+in `options`. `conduit` may be conduit instance or function that returns 
+conduit. 
+
+```javascript
+var ModelWithConduit = Ca.Model.extend({
+  conduit: anyConduit
+});
+// or
+var modelWithConduit = new Ca.Model({
+  conduit: anyConduit
+});
+```
+
+The other way to attach model to conduit is Conduit's `attach()` method with 
+model as argument. If model already attached to another conduit, `attach()` 
+will throw error. To detach model from conduit, use conduit's `detach()` with 
+model as argument.
+
+All conduits are in `Ca.Conduit` namespace.
+
+# Ajax conduit
+
+`Ca.Conduit.Ajax` is common way to interact with server backends. 
 
 
 

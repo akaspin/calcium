@@ -206,7 +206,7 @@
         this.off();
       } else {
         var cleanups = this._cleanups || (this._cleanups = []);
-        if (cleanups.indexOf(action) != -1) cleanups.push(action);
+        if (cleanups.indexOf(action) === -1) cleanups.push(action);
         return this;
       }
     }

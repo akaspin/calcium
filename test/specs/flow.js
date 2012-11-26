@@ -9,12 +9,6 @@
       }, this);
     });
     
-    describe('outside flow phase', function() {
-      it('pit', function() {
-        this.master.emit('one', {});
-      });
-    });
-    
     describe('in flow phase', function() {
       
       it('should emit ordered events first', function() {
