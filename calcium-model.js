@@ -118,7 +118,8 @@
       }
       
       // If any changes - set dirty flag and emit event
-      if (!_.isEmpty(previous) || oldDirty != this.dirty 
+      if (!_.isEmpty(previous) 
+          || oldDirty != this.dirty 
           || oldFresh != this.fresh) {
         this.emit('change', previous);
       }
@@ -141,7 +142,7 @@
     destroy : function(options) {
       options || (options = {});
       this.emit('destroy', options);
-      if (options.clean) this.dispose();
+      if (options.clean || this.fresh) this.dispose();
       return this;
     }
   });
@@ -328,11 +329,18 @@
     },
     
     /**
-     * Commit all changes (destroy, change, add) in persistence.  
+     * Commit all changes (destroy, change, add) in persistence or cleans 
+     * model.  
      * @param {Object} options Options
      */
     commit : function(options) {
       options || (options = {});
+      
+      // Determine all needed operations. destroy, create, change
+      // commit callback needs hash with ops. 
+      // Also. There is two callbacks for conduit - for destroy and store.
+      // both has same interface.
+      
       if (!options.clean || this._conduit) {
         this.emit('commit');
       } else {
@@ -368,7 +376,7 @@
     recordDestroy : function(record, options) {
       var index = this.records.indexOf(record);
       if (index != -1) {
-        if (!options.clean) this.ghosts[record.id] = record;
+        if (!options.clean || !record.fresh) this.ghosts[record.id] = record;
         // off events except dispose
         this.off('destroy change invalid', null, record);
         delete this.ids[record.id];

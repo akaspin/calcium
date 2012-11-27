@@ -337,19 +337,6 @@ To change record use record's `set()` with hash of changed attributes or
 `Model.set()` with array of hashes. If record with ID in hash exists, it will 
 be updated.
 
-When record created or changed, Calcium sets `dirty` flag of record to true. 
-To unset `dirty` (or set attributes with unsetting `dirty`), use 
-`{clean:true}` in `options`. This works in both `set()` methods of model and 
-record.
-
-```javascript
-record.set({}, {clean:true});
-// or
-model.set([{id:1}, {id:2}], {clean:true});
-```
-
-Another way is use `Model.commit()` see below for details.
-
 ## Accessing records
 
 ```javascript
@@ -404,19 +391,6 @@ model.destroy([1,3,'or string id']);
 record.destroy();
 ```
 
-Destroyed records are not destroyed completely. Instead, they are moved to 
-`ghosts` property of model. `ghosts` is hash where destroyed ids mapped to 
-destroyed records. To avoid necromancy, use `{clean:true}` in `options` of 
-both `destroy()`.
-
-```javascript
-model.destroy([1,3,'or string id'], {clean:true});
-// or
-record.destroy({clean:true});
-```
-
-Another way to do exorcism is `Model.commit()`. See below.
-
 ## Validation
 
 To validate attributes on record changing or creation define `validate()` for 
@@ -436,62 +410,49 @@ event will be fired on the record (on change) and model. `validate()` always
 executed in model's context. Then record changing, `validate()` always 
 receives clone of full model attributes with overrided changed properties.
 
-## Commiting and fetching
+## Record states
+
+Record can have two optional properties. `dirty` flag means that record 
+attributes was changed. `fresh` means that record isn't stored in persistence. 
+To avoid problems, don't change above stuff directly. There are simpler ways.
+
+```javascript
+record.set({}, {clean:true});
+// or
+model.set([{id:1}, {id:2}], {clean:true});
+```
+
+`{clean:true}` in options of `set()` method leverages Calcium to remove (or 
+not set) `dirty` and `fresh` properties of record.  
+
+Destroyed records are not destroyed completely. Instead, they are moved to 
+`ghosts` of model. `ghosts` is hash where destroyed ids mapped to destroyed 
+records. Calcium never move fresh records to `ghosts`. Easy come - easy go.
+
+```javascript
+model.destroy([1,3,'or string id'], {clean:true});
+// or
+record.destroy({clean:true});
+```
+
+`destroy()` also can take `{clean:true}` in options. With this option, record 
+will be destroyed without trails. Another way is `record.dispose()`. 
+`dispose()` is chainsaw. It works for live and `ghost` records.  
+
+However, the easiest and the right way is `Model.commit()`
+
+## Commiting
 
 ```javascript
 Model.commit([options])
-Model.fetch([options])
 ```
 
-Without `{clean:true}`, `set()` and `destroy()` are "leaving trails" in model 
-and records (`dirty` and `ghosts`). It's not part of evil plan. "Trails" used 
-for `commit()` method.
+`commit()` fixes all model operations. Maintains model's `ghosts`, cleans 
+`dirty` and `fresh` flags for records. And of course, `commit()` commits all 
+model operations in persistence.
 
-Use `commit()` to consolidate changes (create, change or destroy records) in 
-persistence. After `commit()` all `dirty` will be unsetted, `ghosts` will be 
-cleared. `commit()` also takes `{clean:true}` in options. Use it to leverage 
-`commit()` to not interact with persistence and just clean model.
-
-`fetch()` fetches data from persistence. It takes only one argument `options`.
-
-Both `commit()` and `fetch()` `options` and behaviour are depends on model's 
-`conduit`. It can be Conduit instance or function that returns conduit. By 
-default it `undefined`. 
-
-If model has no conduit `commit()` always just clean model, and `fetch()` is 
-noop. When model attached to conduit, it just emits *fetch* and *commit* 
-events on corresponding method.
-
-## Input and output
-
-```javascript
-Model.income(attributes)
-Model.outcome()
-```
-
-For transform data fetched or sended to conduits use `income()` and 
-`outcome()`.
-
-```javascript
-var MyModel = Ca.Model.extend(
-  income : function(attributes) {
-    return _.extend({mayBeMissing: "I'm here"}, attributes);
-  },
-  outcome : function(){
-    return this.attributes;
-  }
-);
-```
-
-`income()` executed in *model's* context. It takes `attributes` hash for one 
-record. `outcome()` executed in *record's* context. It just 
-returns hash of attributes. Calcium always clone attributes before `income()` 
-and results of `outcome()`.
-
-There is no need to invoke both methods directly. This burden falls on the 
-shoulders of Conduit.
-
-Conduit... conduit... What is this thing? A little patience.
+`commit()` also can take `{clean:true}` in options. It leverages `commit()` 
+*not* interact with persistence and just clean model.
 
 # Conduits
 

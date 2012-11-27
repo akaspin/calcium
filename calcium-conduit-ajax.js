@@ -71,8 +71,8 @@
     
     /**
      * Serialize data
-     * @param {Array} data
-     * @returns 
+     * @param {Array} data From Model.outcome
+     * @returns data for request 
      */
     serialize : function(data) {
       
