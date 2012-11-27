@@ -522,10 +522,25 @@ All conduits are in `Ca.Conduit` namespace.
 
 # Ajax conduit
 
-`Ca.Conduit.Ajax` is common way to interact with server backends. 
+`Ca.Conduit.Ajax` is common way to interact with server backends. This conduit 
+uses JSON for serialize and parse data. 
 
+```javascript
+var ajaxConduit = new Ca.Conduit.Ajax();
+var myModel = new Ca.Model({
+  url: '/mymodel',
+  conduit: ajaxConduit
+});
+myModel.fetch({data: {start:20, limit:10}});
+myModel.set([{id: 23, field: 'me'}]);
+myModel.commit();
+```
 
+`Ca.Conduit.Ajax` uses three HTTP methods
 
+    model.fetch()   ->  GET     /url[?data]
+    model.commit()  ->  DELETE  /url?id=1 or /url?id[]=1&id[]=2
+                        PUT     /url
 
 
 

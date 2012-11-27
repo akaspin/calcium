@@ -44,7 +44,10 @@
     if (model.validate && (invalid = model.validate.call(model, attributes))) 
       throw new Error(invalid);
     this.attributes = attributes;
-    if (!clean) this.dirty = true;
+    if (!clean) {
+      this.dirty = true;
+      this.fresh = true;
+    }
     this.id = _.has(attributes, id) ? attributes[id] : generateQuickGuid();
     this.dispose(function() {
       delete this.model;
@@ -98,6 +101,7 @@
       // All ok - set new
       var previous = {}, now = _.clone(this.attributes),
       oldDirty = this.dirty;
+      oldFresh = this.fresh;
       
       _.forOwn(attributes, function(value, key) {
         if (!_.has(now, key) || !_.isEqual(now[key], value)) {
@@ -108,10 +112,14 @@
       }, this);
       
       // On clean setting override `dirty` value
-      options.clean && (delete this.dirty);
+      if (options.clean) {
+        delete this.dirty;
+        delete this.fresh;
+      }
       
       // If any changes - set dirty flag and emit event
-      if (!_.isEmpty(previous) || oldDirty != this.dirty) {
+      if (!_.isEmpty(previous) || oldDirty != this.dirty 
+          || oldFresh != this.fresh) {
         this.emit('change', previous);
       }
       
@@ -271,10 +279,10 @@
           this.ids[record.id] = record;
           
           // Bind events
-          record.on('destroy', this._onRecordDestroy, this)
-                .on('change', this._onRecordChange, this)
-                .on('invalid', this._onRecordInvalid, this)
-                .on('dispose', this._onRecordDispose, this);
+          record.on('destroy', this.recordDestroy, this)
+                .on('change', this.recordChange, this)
+                .on('invalid', this.recordInvalid, this)
+                .on('dispose', this.recordDispose, this);
           
           this.emit('create', record);
         } catch (e) {
@@ -312,7 +320,7 @@
     
     /**
      * Fetch data from persistence. By design, just emits "fetch" event 
-     * with self and `arguments`. Conduit must to bind on "fetch" on `attach`.
+     * with `options`.
      */
     fetch : function(options) {
       if (this._conduit) this.emit('fetch', options);
@@ -320,20 +328,19 @@
     },
     
     /**
-     * Commit all changes (destroy, change, add) in persistence. 
-     * 
+     * Commit all changes (destroy, change, add) in persistence.  
      * @param {Object} options Options
      */
     commit : function(options) {
       options || (options = {});
       if (!options.clean || this._conduit) {
-        // Emit "sync" event  
-        this.emit('commit', options);
+        this.emit('commit');
       } else {
-        this._onConduitDestroy(null, this, _.keys(this.ghosts));
-        this._onConduitStore(null, this, 
+        this.conduitDestroy(null, this, _.keys(this.ghosts));
+        this.conduitStore(null, this, 
             _.pluck(_.filter(this.records, 'dirty'), 'id'));
       }
+      return this;
     },
     
     //
@@ -342,12 +349,11 @@
     
     /**
      * Model action on successful Record change. Just forward event.
-     * 
      * @param {Object} record Record
      * @param {Object} previous Hash with previous values of changed
      *                 attributes
      */
-    _onRecordChange : function(record, previous) {
+    recordChange : function(record, previous) {
       this.emit('change', {
         record: record,
         previous: previous
@@ -359,7 +365,7 @@
      * @param {Object} record Record
      * @param options Options
      */
-    _onRecordDestroy : function(record, options) {
+    recordDestroy : function(record, options) {
       var index = this.records.indexOf(record);
       if (index != -1) {
         if (!options.clean) this.ghosts[record.id] = record;
@@ -378,7 +384,7 @@
      * @param reason Reason
      * @param options Options
      */
-    _onRecordInvalid : function(record, attributes, reason) {
+    recordInvalid : function(record, attributes, reason) {
       this.emit('invalid', {
         record: record,
         attributes: attributes,
@@ -390,7 +396,7 @@
      * Model action on record dispose.
      * @param {Object} record Record
      */
-    _onRecordDispose : function(record) {
+    recordDispose : function(record) {
       // If record exists - destroy it
       if (this.get(record.id)) record.destroy({clean:true});
       // do cleanup
@@ -408,7 +414,7 @@
      * @param model Model that initiated fetch
      * @param {Array} data Fetched data
      */
-    _onConduitFetch : function(conduit, model, data) {
+    conduitFetch : function(conduit, model, data) {
       if (model !== this) return;
       this.set(this.income ? 
           _.map(data, function(attributes) {
@@ -421,7 +427,7 @@
      * Model action on conduit destroy. Default behaviour is just dispose 
      * ids from `ghosts`
      */
-    _onConduitDestroy : function(conduit, model, ids) {
+    conduitDestroy : function(conduit, model, ids) {
       if (model !== this) return;
       _.each(_.pick(this.ghosts, ids), function(ghost) {
         ghost.dispose();
@@ -435,7 +441,7 @@
      * @param {Object} model Model
      * @param {Array} ids Ids of stored records
      */
-    _onConduitStore : function(conduit, model, ids) {
+    conduitStore : function(conduit, model, ids) {
       if (model !== this) return;
       var res, records = _.map(_.pick(this.ids, ids), function(record){
         if (record.dirty) {
