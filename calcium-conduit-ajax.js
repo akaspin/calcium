@@ -3,35 +3,12 @@
       $ = Ca.$;
   
   Ca.Conduit = Ca.Conduit || {};
-  
+
   /**
-   * Constructor.
-   * @param {Object} options
+   * Basic "dummy" conduit
    */
-  var Ajax = Ca.Conduit.Ajax = function(options) {
-    this._Queue = $({});
-    options || (options = {});
-    _.extend(this, options);
-  };
-  
-  _.extend(Ajax.prototype, Ca.Events, {
+  var Base = Ca.Conduit.Base = {
     
-    /**
-     * Default request setup
-     */
-    defaults : {
-      contentType: 'application/json',
-      dataType: 'json',
-      processData: false,
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest'
-      }
-    },
-    
-    /**
-     * Attach conduit to model.
-     * @param model Model
-     */
     attach : function(model) {
       if (_.has(model, '_conduit') && model._conduit !== this) 
         throw new Error("Can't attach conduit. Model already has one.");
@@ -61,7 +38,60 @@
     },
     
     /**
-     * Parse data.
+     * Default setup
+     * @param options
+     */
+    setup : function(options) {
+      this._Queue = $({});
+      options || (options = {});
+      _.extend(this, options);
+    },
+    
+    //
+    // Model events
+    //
+    
+    modelFetch : function(model, options) {
+      
+    },
+    
+    modelCommit : function(model) {
+      
+    }
+  };
+  
+  
+  /**
+   * Constructor.
+   * @param {Object} options
+   */
+  var Ajax = Ca.Conduit.Ajax = function(options) {
+    this._Queue = $({});
+    options || (options = {});
+    _.extend(this, options);
+  };
+  
+  _.extend(Ajax.prototype, Ca.Events, {
+    
+    /**
+     * Default request setup
+     */
+    defaults : {
+      contentType: 'application/json',
+      dataType: 'json',
+      processData: false,
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    },
+    
+    destroy : function(model, ids) {
+      if (!ids.length) return;
+      
+    },
+    
+    /**
+     * Parse response data.
      * @param data
      * @returns {Array} Parsed data
      */
@@ -70,13 +100,17 @@
     },
     
     /**
-     * Serialize data
+     * Serialize data for request
      * @param {Array} data From Model.outcome
      * @returns data for request 
      */
     serialize : function(data) {
       
     },
+    
+    //
+    // Model handlers
+    //
     
     /**
      * Fetch data from conduit
@@ -92,9 +126,16 @@
      * @param model
      */
     modelCommit : function(model) {
+      var ids;
+      // Collect all data
       
+      this.destroy(model, _.keys(model.ghosts));
     },
   
+    //
+    // Utility
+    //
+    
     /**
      * 
      */
@@ -110,11 +151,6 @@
     _queue : function(request) {
       return request ? this._Queue.queue(request) : this._Queue.queue();
     },
-    
-    //
-    // Utility
-    //
-    
     
   });
   

@@ -164,35 +164,7 @@
    * @constructor
    */
   var Model = Ca.Model = function(options) {
-    // set props
-    //this.flowBy = ['destroy', 'change', 'create', 'invalid'];
-    this.ids = {};
-    this.records = [];
-    this.ghosts = {};
-    options && _.extend(this, options);
-    
-    // Attach to conduit
-    var conduit = _.result(this, 'conduit');
-    if (conduit && conduit.attach) conduit.attach(this);
-    
-    // set dispose action
-    this.dispose(function() {
-      // Clean destroy all records
-      this.destroy(_.keys(this.ids), {clean:true});
-      
-      // kill ghosts
-      _.each(_.values(this.ghosts), function(ghost) {
-        ghost.dispose();
-      });
-      
-      // final cleanup
-      delete this.ghosts;
-      delete this.ids;
-      delete this.records;
-    });
-    
-    // fire init
-    this.init.apply(this, arguments);
+    this.setup(options);
   };
   
   // Model methods
@@ -208,6 +180,42 @@
      */
     id : 'id',
 
+    /**
+     * Default setup for model. Use only for fine-tuned models.
+     * @param {Object} options Options
+     */
+    setup : function(options) {
+      // set props
+      this.flowBy = ['destroy', 'change', 'create', 'invalid'];
+      this.ids = {};
+      this.records = [];
+      this.ghosts = {};
+      options && _.extend(this, options);
+      
+      // Attach to conduit
+      var conduit = _.result(this, 'conduit');
+      if (conduit && conduit.attach) conduit.attach(this);
+      
+      // set dispose action
+      this.dispose(function() {
+        // Clean destroy all records
+        this.destroy(_.keys(this.ids), {clean:true});
+        
+        // kill ghosts
+        _.each(_.values(this.ghosts), function(ghost) {
+          ghost.dispose();
+        });
+        
+        // final cleanup
+        delete this.ghosts;
+        delete this.ids;
+        delete this.records;
+      });
+      
+      // fire init
+      this.init.apply(this, arguments);
+    },
+    
     /**
      * Initializer. Called by constructor.
      */
@@ -336,11 +344,6 @@
     commit : function(options) {
       options || (options = {});
       
-      // Determine all needed operations. destroy, create, change
-      // commit callback needs hash with ops. 
-      // Also. There is two callbacks for conduit - for destroy and store.
-      // both has same interface.
-      
       if (!options.clean || this._conduit) {
         this.emit('commit');
       } else {
@@ -349,6 +352,17 @@
             _.pluck(_.filter(this.records, 'dirty'), 'id'));
       }
       return this;
+    },
+    
+    /**
+     * 
+     */
+    income : function(attributes) {
+      
+    },
+    
+    outcome : function() {
+      
     },
     
     //
@@ -444,7 +458,7 @@
     
     /**
      * Model action on conduit store. Default behaviour is just clean
-     * `dirty` for records with given ids. 
+     * `dirty` and `fresh` records with given ids. 
      * @param {Object} conduit Conduit
      * @param {Object} model Model
      * @param {Array} ids Ids of stored records
