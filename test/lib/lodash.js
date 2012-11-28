@@ -16,6 +16,9 @@
     window = freeGlobal;
   }
 
+  /** Document shortcut used by `createFunction` */
+  var document = window.document;
+
   /** Used for array and object method references */
   var arrayRef = [],
       // avoid a Closure Compiler bug by creatively creating an object
@@ -171,7 +174,7 @@
    * a string without a `toString` property value of `typeof` "function".
    */
   try {
-    var noNodeClass = ({ 'toString': 0 } + '', toString.call(window.document || 0) == objectClass);
+    var noNodeClass = ({ 'toString': 0 } + '', toString.call(document || 0) == objectClass);
   } catch(e) { }
 
   /* Detect if `Function#bind` exists and is inferred to be fast (all but V8) */
@@ -237,8 +240,8 @@
    * @returns {Object} Returns a `lodash` instance.
    */
   function lodash(value) {
-    // exit early if already wrapped
-    if (value && value.__wrapped__) {
+    // exit early if already wrapped, even if wrapped by a different `lodash` constructor
+    if (value && typeof value == 'object' && value.__wrapped__) {
       return value;
     }
     // allow invoking `lodash` without the `new` operator
@@ -299,6 +302,48 @@
   /*--------------------------------------------------------------------------*/
 
   /**
+   * Creates a function from the given `args` and `body` strings.
+   *
+   * @private
+   * @param {String} args The comma separated function arguments.
+   * @param {String} body The function body.
+   * @returns {Function} The new function.
+   */
+  var createFunction = function(args, body) {
+    var error,
+        onerror = window.onerror,
+        prevDash = window._,
+        script = document.createElement('script'),
+        sibling = document.scripts[0];
+
+    // use script injection to avoid Firefox's unoptimized `Function` constructor
+    // http://bugzil.la/804933
+    window.onerror = function(message) {
+      error = message;
+      return true;
+    };
+    // the newline, in `'\n}'`, is required to avoid errors if `body` ends
+    // with a single line comment
+    script.text = 'var _ = function(' + args + ') {' + body + '\n}';
+    sibling.parentNode.insertBefore(script, sibling).parentNode.removeChild(script);
+
+    var result = window._;
+    window._ = prevDash;
+    window.onerror = onerror;
+
+    if (error) {
+      throw new SyntaxError(error);
+    }
+    return result;
+  };
+
+  try {
+    createFunction();
+  } catch(e) {
+    createFunction = Function;
+  }
+
+  /**
    * The template used to create iterator functions.
    *
    * @private
@@ -307,10 +352,10 @@
    */
   var iteratorTemplate = template(
     // conditional strict mode
-    '<% if (obj.useStrict) { %>\'use strict\';\n<% } %>' +
+    "<% if (obj.useStrict) { %>'use strict';\n<% } %>" +
 
     // the `iteratee` may be reassigned by the `top` snippet
-    'var index, value, iteratee = <%= firstArg %>, ' +
+    'var index, iteratee = <%= firstArg %>, ' +
     // assign the `result` variable an initial value
     'result = <%= firstArg %>;\n' +
     // exit early if the first argument is falsey
@@ -321,18 +366,17 @@
     // array-like iteration:
     '<% if (arrayLoop) { %>' +
     'var length = iteratee.length; index = -1;\n' +
-    'if (typeof length == \'number\') {' +
+    "if (typeof length == 'number') {" +
 
     // add support for accessing string characters by index if needed
     '  <% if (noCharByIndex) { %>\n' +
     '  if (isString(iteratee)) {\n' +
-    '    iteratee = iteratee.split(\'\')\n' +
+    "    iteratee = iteratee.split('')\n" +
     '  }' +
     '  <% } %>\n' +
 
     // iterate over the array-like value
     '  while (++index < length) {\n' +
-    '    value = iteratee[index];\n' +
     '    <%= arrayLoop %>\n' +
     '  }\n' +
     '}\n' +
@@ -344,7 +388,7 @@
     '  var length = iteratee.length; index = -1;\n' +
     '  if (length && isArguments(iteratee)) {\n' +
     '    while (++index < length) {\n' +
-    '      value = iteratee[index += \'\'];\n' +
+    "      index += '';\n" +
     '      <%= objectLoop %>\n' +
     '    }\n' +
     '  } else {' +
@@ -357,8 +401,8 @@
     // the the `prototype` property of functions regardless of its
     // [[Enumerable]] value.
     '  <% if (!hasDontEnumBug) { %>\n' +
-    '  var skipProto = typeof iteratee == \'function\' && \n' +
-    '    propertyIsEnumerable.call(iteratee, \'prototype\');\n' +
+    "  var skipProto = typeof iteratee == 'function' && \n" +
+    "    propertyIsEnumerable.call(iteratee, 'prototype');\n" +
     '  <% } %>' +
 
     // iterate own properties using `Object.keys` if it's fast
@@ -368,8 +412,7 @@
     '      length = ownProps.length;\n\n' +
     '  while (++ownIndex < length) {\n' +
     '    index = ownProps[ownIndex];\n' +
-    '    <% if (!hasDontEnumBug) { %>if (!(skipProto && index == \'prototype\')) {\n  <% } %>' +
-    '    value = iteratee[index];\n' +
+    "    <% if (!hasDontEnumBug) { %>if (!(skipProto && index == 'prototype')) {\n  <% } %>" +
     '    <%= objectLoop %>\n' +
     '    <% if (!hasDontEnumBug) { %>}\n<% } %>' +
     '  }' +
@@ -378,12 +421,11 @@
     '  <% } else { %>\n' +
     '  for (index in iteratee) {<%' +
     '    if (!hasDontEnumBug || useHas) { %>\n    if (<%' +
-    '      if (!hasDontEnumBug) { %>!(skipProto && index == \'prototype\')<% }' +
+    "      if (!hasDontEnumBug) { %>!(skipProto && index == 'prototype')<% }" +
     '      if (!hasDontEnumBug && useHas) { %> && <% }' +
     '      if (useHas) { %>hasOwnProperty.call(iteratee, index)<% }' +
     '    %>) {' +
     '    <% } %>\n' +
-    '    value = iteratee[index];\n' +
     '    <%= objectLoop %>;' +
     '    <% if (!hasDontEnumBug || useHas) { %>\n    }<% } %>\n' +
     '  }' +
@@ -396,12 +438,11 @@
     '  <% if (hasDontEnumBug) { %>\n\n' +
     '  var ctor = iteratee.constructor;\n' +
     '    <% for (var k = 0; k < 7; k++) { %>\n' +
-    '  index = \'<%= shadowed[k] %>\';\n' +
+    "  index = '<%= shadowed[k] %>';\n" +
     '  if (<%' +
-    '      if (shadowed[k] == \'constructor\') {' +
+    "      if (shadowed[k] == 'constructor') {" +
     '        %>!(ctor && ctor.prototype === iteratee) && <%' +
     '      } %>hasOwnProperty.call(iteratee, index)) {\n' +
-    '    value = iteratee[index];\n' +
     '    <%= objectLoop %>\n' +
     '  }' +
     '    <% } %>' +
@@ -418,9 +459,9 @@
   var assignIteratorOptions = {
     'args': 'object, source, guard',
     'top':
-      'for (var argsIndex = 1, argsLength = typeof guard == \'number\' ? 2 : arguments.length; argsIndex < argsLength; argsIndex++) {\n' +
+      "for (var argsIndex = 1, argsLength = typeof guard == 'number' ? 2 : arguments.length; argsIndex < argsLength; argsIndex++) {\n" +
       '  if ((iteratee = arguments[argsIndex])) {',
-    'objectLoop': 'result[index] = value',
+    'objectLoop': 'result[index] = iteratee[index]',
     'bottom': '  }\n}'
   };
 
@@ -429,9 +470,9 @@
    */
   var forEachIteratorOptions = {
     'args': 'collection, callback, thisArg',
-    'top': 'callback = createCallback(callback, thisArg)',
-    'arrayLoop': 'if (callback(value, index, collection) === false) return result',
-    'objectLoop': 'if (callback(value, index, collection) === false) return result'
+    'top': 'callback = callback && thisArg === undefined ? callback : createCallback(callback, thisArg)',
+    'arrayLoop': 'if (callback(iteratee[index], index, collection) === false) return result',
+    'objectLoop': 'if (callback(iteratee[index], index, collection) === false) return result'
   };
 
   /** Reusable iterator options for `forIn` and `forOwn` */
@@ -639,9 +680,9 @@
     data.firstArg = /^[^,]+/.exec(args)[0];
 
     // create the function factory
-    var factory = Function(
+    var factory = createFunction(
         'createCallback, hasOwnProperty, isArguments, isString, objectTypes, ' +
-        'nativeKeys, propertyIsEnumerable',
+        'nativeKeys, propertyIsEnumerable, undefined',
       'return function(' + args + ') {\n' + iteratorTemplate(data) + '\n}'
     );
     // return the compiled function
@@ -1416,7 +1457,7 @@
   /**
    * Checks if `value` is `NaN`.
    *
-   * Note: This is not the same as native `isNaN`, which will return true for
+   * Note: This is not the same as native `isNaN`, which will return `true` for
    * `undefined` and other values. See http://es5.github.com/#x15.1.2.4.
    *
    * @static
@@ -1441,7 +1482,7 @@
   function isNaN(value) {
     // `NaN` as a primitive is the only value that is not equal to itself
     // (perform the [[Class]] check first to avoid errors with some host objects in IE)
-    return toString.call(value) == numberClass && value != +value
+    return isNumber(value) && value != +value
   }
 
   /**
@@ -1478,7 +1519,7 @@
    * // => true
    */
   function isNumber(value) {
-    return toString.call(value) == numberClass;
+    return typeof value == 'number' || toString.call(value) == numberClass;
   }
 
   /**
@@ -1548,7 +1589,7 @@
    * // => true
    */
   function isString(value) {
-    return toString.call(value) == stringClass;
+    return typeof value == 'string' || toString.call(value) == stringClass;
   }
 
   /**
@@ -3585,7 +3626,7 @@
    * @example
    *
    * _.escape('Moe, Larry & Curly');
-   * // => "Moe, Larry &amp; Curly"
+   * // => 'Moe, Larry &amp; Curly'
    */
   function escape(string) {
     return string == null ? '' : (string + '').replace(reUnescapedHtml, escapeHtmlChar);
@@ -3873,10 +3914,10 @@
     // frame code as the function body
     source = 'function(' + variable + ') {\n' +
       (hasVariable ? '' : variable + ' || (' + variable + ' = {});\n') +
-      'var __t, __p = \'\', __e = _.escape' +
+      "var __t, __p = '', __e = _.escape" +
       (isEvaluating
         ? ', __j = Array.prototype.join;\n' +
-          'function print() { __p += __j.call(arguments, \'\') }\n'
+          "function print() { __p += __j.call(arguments, '') }\n"
         : (hasVariable ? '' : ', __d = ' + variable + '.' + variable + ' || ' + variable) + ';\n'
       ) +
       source +
@@ -3889,7 +3930,7 @@
       : '';
 
     try {
-      result = Function('_', 'return ' + source + sourceURL)(lodash);
+      result = createFunction('_', 'return ' + source + sourceURL)(lodash);
     } catch(e) {
       e.source = source;
       throw e;
@@ -3952,7 +3993,7 @@
    * @example
    *
    * _.unescape('Moe, Larry &amp; Curly');
-   * // => "Moe, Larry & Curly"
+   * // => 'Moe, Larry & Curly'
    */
   function unescape(string) {
     return string == null ? '' : (string + '').replace(reEscapedHtml, unescapeHtmlChar);
