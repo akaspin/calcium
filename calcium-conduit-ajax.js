@@ -9,6 +9,10 @@
    */
   var Base = Ca.Conduit.Base = {
     
+    /**
+     * Attach model to conduit
+     * @param {Object} model Model
+     */
     attach : function(model) {
       if (_.has(model, '_conduit') && model._conduit !== this) 
         throw new Error("Can't attach conduit. Model already has one.");
@@ -25,6 +29,10 @@
           .on('fetch', model.conduitFetch, model);
     },
     
+    /**
+     * Detach model from conduit
+     * @param model
+     */
     detach : function(model) {
       if (_.has(model, '_conduit')) {
         if (model._conduit !== this)

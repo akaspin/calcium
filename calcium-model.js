@@ -288,10 +288,10 @@
           this.ids[record.id] = record;
           
           // Bind events
-          record.on('destroy', this.recordDestroy, this)
-                .on('change', this.recordChange, this)
-                .on('invalid', this.recordInvalid, this)
-                .on('dispose', this.recordDispose, this);
+          record.on('destroy', this._recordDestroy, this)
+                .on('change', this._recordChange, this)
+                .on('invalid', this._recordInvalid, this)
+                .on('dispose', this._recordDispose, this);
           
           this.emit('create', record);
         } catch (e) {
@@ -366,7 +366,7 @@
     },
     
     //
-    // Record event handlers
+    // Record event handlers. All internal.
     //
     
     /**
@@ -375,7 +375,7 @@
      * @param {Object} previous Hash with previous values of changed
      *                 attributes
      */
-    recordChange : function(record, previous) {
+    _recordChange : function(record, previous) {
       this.emit('change', {
         record: record,
         previous: previous
@@ -387,8 +387,8 @@
      * @param {Object} record Record
      * @param options Options
      */
-    recordDestroy : function(record, options) {
-      var index = this.records.indexOf(record);
+    _recordDestroy : function(record, options) {
+      var index = _.indexOf(this.records, record);
       if (index != -1) {
         if (!options.clean || !record.fresh) this.ghosts[record.id] = record;
         // off events except dispose
@@ -406,7 +406,7 @@
      * @param reason Reason
      * @param options Options
      */
-    recordInvalid : function(record, attributes, reason) {
+    _recordInvalid : function(record, attributes, reason) {
       this.emit('invalid', {
         record: record,
         attributes: attributes,
@@ -418,7 +418,7 @@
      * Model action on record dispose.
      * @param {Object} record Record
      */
-    recordDispose : function(record) {
+    _recordDispose : function(record) {
       // If record exists - destroy it
       if (this.get(record.id)) record.destroy({clean:true});
       // do cleanup
