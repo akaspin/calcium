@@ -10,6 +10,16 @@
   var Base = Ca.Conduit.Base = {
     
     /**
+     * Default setup
+     * @param options
+     */
+    setup : function(options) {
+      this._Queue = $({});
+      options || (options = {});
+      _.extend(this, options);
+    },
+    
+    /**
      * Attach model to conduit
      * @param {Object} model Model
      */
@@ -46,18 +56,40 @@
     },
     
     /**
-     * Default setup
-     * @param options
+     * Add operation to queue
+     * @param operation Operation. Use empty array for clear. 
+     *                  Omit to get queue 
+     * @returns
      */
-    setup : function(options) {
-      this._Queue = $({});
-      options || (options = {});
-      _.extend(this, options);
-    },
+    queue : function(operation) {
+      if (operation) {
+        return this._Queue.queue(operation);
+      } else {
+        return this._Queue.queue();
+      }
+    }
+
+  };
+  
+  /**
+   * Ajax conduit. This conduit uses following model optional 
+   * properties:
+   * 
+   * - `host`
+   * - `url`
+   */
+  var Ajax = Ca.Conduit.Ajax = function(options) {
+    this.setup(options);
+  };
+  
+  _.extend(Ajax.prototype, Ca.Events, Ca.Conduit.Base, {
     
-    //
-    // Model events
-    //
+    /**
+     * Get url
+     */
+    _getUrl : function(model, id) {
+      
+    },
     
     modelFetch : function(model, options) {
       
@@ -66,100 +98,7 @@
     modelCommit : function(model) {
       
     }
-  };
-  
-  
-  /**
-   * Constructor.
-   * @param {Object} options
-   */
-  var Ajax = Ca.Conduit.Ajax = function(options) {
-    this._Queue = $({});
-    options || (options = {});
-    _.extend(this, options);
-  };
-  
-  _.extend(Ajax.prototype, Ca.Events, {
-    
-    /**
-     * Default request setup
-     */
-    defaults : {
-      contentType: 'application/json',
-      dataType: 'json',
-      processData: false,
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest'
-      }
-    },
-    
-    destroy : function(model, ids) {
-      if (!ids.length) return;
-      
-    },
-    
-    /**
-     * Parse response data.
-     * @param data
-     * @returns {Array} Parsed data
-     */
-    parse : function(data) {
-      
-    },
-    
-    /**
-     * Serialize data for request
-     * @param {Array} data From Model.outcome
-     * @returns data for request 
-     */
-    serialize : function(data) {
-      
-    },
-    
-    //
-    // Model handlers
-    //
-    
-    /**
-     * Fetch data from conduit
-     * @param {Object} model Model that initiate fetch
-     * @param options
-     */
-    modelFetch : function(model, options) {
-      options || (options = {});
-    },
-    
-    /**
-     * Commit data to conduit
-     * @param model
-     */
-    modelCommit : function(model) {
-      var ids;
-      // Collect all data
-      
-      this.destroy(model, _.keys(model.ghosts));
-    },
-  
-    //
-    // Utility
-    //
-    
-    /**
-     * 
-     */
-    _requestSettings : function(params, defaults) {
-      return _.extend({}, this.defaults, defaults, params);
-    },
-    
-    /**
-     * Queue request. To clear queue use empty array ([]) as `request`. Omit 
-     * arguments to get queue.
-     * @param request Request
-     */
-    _queue : function(request) {
-      return request ? this._Queue.queue(request) : this._Queue.queue();
-    },
     
   });
-  
+
 }).call(this);

@@ -241,7 +241,6 @@
           var event, data, 
               order = _.union((this.flowBy || []), _.keys(this._flow));
           
-          
           while (event = order.shift()) {
             if (data = this._flow[event]) {
               Ca.Events.emit.call(this, event, data);
@@ -285,6 +284,7 @@
       Ca.Events.dispose.call(this, action);
     }
   });
+  
   
   
 }).call(this);

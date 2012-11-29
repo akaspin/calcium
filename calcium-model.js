@@ -5,25 +5,6 @@
 
 (function(){
   var Ca = this.Ca;
-
-  /*
-   * Model
-   * =====
-   * 
-   * Model holds records.
-   */
-  
-  /*
-   * Record
-   * ------
-   * 
-   * Records is very skinny objects inside Models. Besides methods, record has 
-   * three properties.
-   * 
-   * - `id` Unique ID inside Model. Assicned on creation. Immutable.
-   * - `attributes` Record attributes
-   * - `dirty` Flag that record isn't synchronized with persistence.
-   */
   
   function generateQuickGuid() {
     return _.uniqueId(Math.random().toString(36).substring(2, 15) +
@@ -38,7 +19,7 @@
    * @throws Error if attributes not pass `validate`;
    * @constructor
    */
-  var Record = function(model, attributes, clean) {
+  var _Record = function(model, attributes, clean) {
     this.model = model;
     var invalid, id = model.id;
     if (model.validate && (invalid = model.validate.call(model, attributes))) 
@@ -56,7 +37,7 @@
   };
   
   // Record methods
-  _.extend(Record.prototype, Ca.Events, {
+  _.extend(_Record.prototype, Ca.Events, {
     
     /**
      * Get record attribute by its name.
@@ -165,6 +146,8 @@
    */
   var Model = Ca.Model = function(options) {
     this.setup(options);
+    // fire init
+    this.init.apply(this, arguments);
   };
   
   // Model methods
@@ -212,8 +195,6 @@
         delete this.records;
       });
       
-      // fire init
-      this.init.apply(this, arguments);
     },
     
     /**
@@ -279,7 +260,7 @@
         attrs = incoming[i];
         // Create new record or report error.
         try {
-          record = new Record(this, attrs, options.clean);
+          record = new _Record(this, attrs, options.clean);
           
           // if record with id present in ghosts. dispose it
           if (existing = this.ghosts[record.id]) existing.dispose();

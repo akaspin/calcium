@@ -1,5 +1,5 @@
 /**
- * Sinon.JS 1.4.2, 2012/08/06
+ * Sinon.JS 1.5.2, 2012/11/27
  *
  * @author Christian Johansen (christian@cjohansen.no)
  * @author Contributors: https://github.com/cjohansen/Sinon.JS/blob/master/AUTHORS
@@ -33,7 +33,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-"use strict";
 /*jslint eqeqeq: false, onevar: false, forin: true, nomen: false, regexp: false, plusplus: false*/
 /*global module, require, __dirname, document*/
 /**
@@ -73,7 +72,7 @@ var sinon = (function (buster) {
     }
 
     function isFunction(obj) {
-        return !!(obj && obj.constructor && obj.call && obj.apply);
+        return typeof obj === "function" || !!(obj && obj.constructor && obj.call && obj.apply);
     }
 
     function mirrorProperties(target, source) {
@@ -171,6 +170,10 @@ var sinon = (function (buster) {
 
             if (a === b) {
                 return true;
+            }
+
+            if ((a === null && b !== null) || (a !== null && b === null)) {
+                return false;
             }
 
             var aString = Object.prototype.toString.call(a);
@@ -316,7 +319,10 @@ var sinon = (function (buster) {
 
         typeOf: function (value) {
             if (value === null) {
-              return "null";
+                return "null";
+            }
+            else if (value === undefined) {
+                return "undefined";
             }
             var string = Object.prototype.toString.call(value);
             return string.substring(8, string.length - 1).toLowerCase();

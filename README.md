@@ -24,6 +24,26 @@ MyObj.extend = Ca.extend;
 var MySubObj = MyObj.extend({ ... });
 ```
 
+Also, you can use fine-grained method for extending all Calcium classes.
+
+```javascript
+// Constructor
+var My = function(options) {
+  this.setup(options);
+  this.init.apply(this, arguments);
+};
+
+// Methods
+_.extend(My.prototype, Ca.Model.prototype, {
+  // methods here
+});
+
+// Bind extend
+My.extend = Ca.extend
+```
+
+All Calcium classes contains `setup()` method for basic setup.
+
 # Evented objects
 
 `Ca.Events` is a module that can be mixed in to any object, giving the object 
@@ -500,9 +520,10 @@ myModel.commit();
 `Ca.Conduit.Ajax` uses three HTTP methods
 
     model.fetch()   ->  GET     /url[?data]
-    model.commit()  ->  DELETE  /url?id=1 or /url?id[]=1&id[]=2
+    model.commit()  ->  DELETE  /url/id
+                        POST    /url
                         PUT     /url
 
-
+# REST conduit
 
 

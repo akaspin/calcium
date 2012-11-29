@@ -2,10 +2,14 @@
 
 <link rel="stylesheet" type="text/css" href="lib/jasmine-1.2.0/jasmine.css">
 
+<!--[if lt IE 9]>
+<script src="lib/html5shiv.js"></script>
+<![endif]-->
+
 <script type="text/javascript" src="lib/jasmine-1.2.0/jasmine.js"></script>
 <script type="text/javascript" src="lib/jasmine-1.2.0/jasmine-html.js"></script>
-<script type="text/javascript" src="lib/sinon-server-1.4.2.js"></script>
-<script type="text/javascript" src="lib/sinon-ie-1.4.2.js"></script>
+<script type="text/javascript" src="lib/sinon-server-1.5.2.js"></script>
+<script type="text/javascript" src="lib/sinon-ie-1.5.2.js"></script>
 
 <!-- Libs -->
 <script type="text/javascript" src="lib/jquery-1.8.2.js"></script>
@@ -18,7 +22,9 @@
 <script type="text/javascript" src="fixtures/model.js"></script>
 
 <!-- Specs -->
-<script type="text/javascript" src="specs/conduit-ajax.js"></script>
+<script type="text/javascript" src="mocks/conduit-ajax.js"></script>
 
 <!-- Go -->
 <script type="text/javascript" src="test.js"></script>
+
+
