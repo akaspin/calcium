@@ -33,6 +33,7 @@
     }
     this.id = _.has(attributes, id) ? attributes[id] : guid();
     this.dispose(function() {
+      this.model._recordDispose(this);
       delete this.model;
       delete this.attributes;
     });
@@ -77,6 +78,7 @@
                 _.extend({}, this.attributes, attributes));
       // If any invalid results emit "invalid event"
       if (invalid) {
+        model._recordInvalid(this, attributes, invalid);
         this.emit('invalid', attributes, invalid);
         return this;
       }
@@ -104,6 +106,7 @@
       if (!_.isEmpty(previous) 
           || oldDirty != this.dirty 
           || oldFresh != this.fresh) {
+        model._recordChange(this, previous);
         this.emit('change', previous);
       }
       
@@ -124,6 +127,7 @@
      */
     destroy : function(options) {
       options || (options = {});
+      this.model._recordDestroy(this, options);
       this.emit('destroy', options);
       if (options.clean || this.fresh) this.dispose();
       return this;
@@ -264,19 +268,10 @@
         // Create new record or report error.
         try {
           record = new _Record(this, attrs, options.clean);
-          
           // if record with id present in ghosts. dispose it
           if (existing = this.ghosts[record.id]) existing.dispose();
-          
           ingest.push(record);
           this.ids[record.id] = record;
-          
-          // Bind events
-          record.on('destroy', this._recordDestroy, this)
-                .on('change', this._recordChange, this)
-                .on('invalid', this._recordInvalid, this)
-                .on('dispose', this._recordDispose, this);
-          
           this.emit('create', record);
         } catch (e) {
           this.emit('invalid', {
@@ -387,7 +382,8 @@
       if (index != -1) {
         if (!options.clean || !record.fresh) this.ghosts[record.id] = record;
         // off events except dispose
-        this.off('destroy change invalid', null, record);
+//        this.off('destroy change invalid', null, record);
+        this.off(null, null, record);
         delete this.ids[record.id];
         this.records.splice(index, 1);
         this.emit('destroy', record);
