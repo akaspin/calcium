@@ -155,6 +155,8 @@
   // Model methods
   _.extend(Model.prototype, Ca.Flow, {
     
+    flowBy : ['destroy', 'change', 'create', 'invalid'],
+    
     /**
      * ID attribute name.
      * 
@@ -171,7 +173,6 @@
      */
     setup : function(options) {
       // set props
-      this.flowBy = ['destroy', 'change', 'create', 'invalid'];
       this.ids = {};
       this.records = [];
       this.ghosts = {};

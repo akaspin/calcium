@@ -208,7 +208,7 @@
         this.emit('dispose');
         if (this._cleanups) {
           var i, cleanups = this._cleanups; l = cleanups.length;
-          for (i=0; i < l-1; i++) cleanups[i].call(this);
+          for (i=0; i < l; i++) cleanups[i].call(this);
         }
         delete this._cleanups;
         this.off();
