@@ -1,10 +1,14 @@
 /*
- * Calcium core
+ * Calcium core. 
  */
 
 (function(){
   
+  ////////////////////////////////////////////
+  //
   // Initial Setup
+  //
+  ////////////////////////////////////////////
 
   // Save a reference to the global object (`window` in the browser, `exports`
   // on the server).
@@ -19,7 +23,7 @@
     Ca = root.Ca = {};
   }
 
-  // Current version of the library. Keep in sync with `package.json`.
+  // Current version of the library.
   Ca.VERSION = '0.0.1';
 
   // Require Underscore, if we're on the server, and it's not already present.
@@ -70,12 +74,16 @@
     return child;
   };
   
+  //////////////////////////////////
+  //
   // Events
+  //
+  //////////////////////////////////
   
   //Regular expression used to split event strings
   var eventSplitter = /\s+/;
 
-  // Internal function to find event
+  // Internal function to find callback
   var findCb = function(event, callback, context) {
     var i, 
         callbacks = this._events[event], 
@@ -215,10 +223,6 @@
   /**
    * Event aggregator
    * ----------------
-   * 
-   * Use `flowBy` to order events.
-   * 
-   *     flowBy : ['first', 'second']
    */
   Ca.Flow = _.extend({}, Ca.Events, {
     

@@ -4,9 +4,11 @@
  */
 
 (function(){
+  // Bind to Ca namespace
   var Ca = this.Ca;
   
-  function generateQuickGuid() {
+  // Simple guid
+  function guid() {
     return _.uniqueId(Math.random().toString(36).substring(2, 15) +
         Math.random().toString(36).substring(2, 15));
   }
@@ -29,7 +31,7 @@
       this.dirty = true;
       this.fresh = true;
     }
-    this.id = _.has(attributes, id) ? attributes[id] : generateQuickGuid();
+    this.id = _.has(attributes, id) ? attributes[id] : guid();
     this.dispose(function() {
       delete this.model;
       delete this.attributes;
@@ -313,7 +315,8 @@
      * with `options`.
      */
     fetch : function(options) {
-      if (this._conduit) this.emit('fetch', options);
+      !options && (options = {});
+      if (this._conduit) this._conduit.fetch(this, options);
       return this;
     },
     
@@ -324,9 +327,19 @@
      */
     commit : function(options) {
       options || (options = {});
-      
-      if (!options.clean || this._conduit) {
-        this.emit('commit');
+      var conduit;
+      if (!options.clean && (conduit = this._conduit)) {
+        // destroy first
+        !_.isEmpty(this.ghosts) && conduit.destroy(this, _.keys(this.ghosts));
+        var changes = _.groupBy(
+            _.filter(this.records, 'dirty'), 
+            function(record) {
+              return record.fresh ? 'fresh' : 'dirty';
+            });
+        
+        !_.isEmpty(changes.fresh) && conduit.create(this, changes.fresh);
+        !_.isEmpty(changes.dirty) && conduit.change(this, changes.dirty);
+        
       } else {
         this.conduitDestroy(null, this, _.keys(this.ghosts));
         this.conduitStore(null, this, 
